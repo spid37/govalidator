@@ -727,7 +727,7 @@ func typeCheck(v reflect.Value, t reflect.StructField) (bool, error) {
 							field := fmt.Sprint(v) // make value into string, then validate with regex
 							if result := validatefunc(field, ps[1:]...); !result && !negate || result && negate {
 								var err error
-								err = getErrorMessage(t.Name, key, field, negate, ps[1:]...)
+								err = getErrorMessage(t.Name, key, field, negate, ps[0:]...)
 								return false, Error{t.Name, err}
 							}
 						default:
@@ -853,8 +853,17 @@ func isEmptyValue(v reflect.Value) bool {
 // getErrorMessage get the error message for the specified tag
 func getErrorMessage(name string, tagOpt string, field string, negate bool, params ...string) error {
 	// default errors
-	validateErr := fmt.Errorf("%s does not validate as %s", field, tagOpt)
-	validateNegateErr := fmt.Errorf("%s does validate as %s", field, tagOpt)
+	var validateErr error
+	var validateNegateErr error
+	if params != nil {
+		validateErr = fmt.Errorf("%s does not validate as %s", field, params[0])
+		validateNegateErr = fmt.Errorf("%s does validate as %s", field, params[0])
+		// remove the first item, the original validator only needed for default error
+		params = params[1:]
+	} else {
+		validateErr = fmt.Errorf("%s does not validate as %s", field, tagOpt)
+		validateNegateErr = fmt.Errorf("%s does validate as %s", field, tagOpt)
+	}
 
 	// check for custom errors
 	if val, ok := CustomValidatorMessageMap[tagOpt]; ok {
