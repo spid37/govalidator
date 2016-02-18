@@ -2312,7 +2312,7 @@ func TestCustomValidateMessage(t *testing.T) {
 		expected string
 	}{
 		{"Title", "Title must be between 5 and 128 characters in length"},
-		{"Message", "the value goose failed validator duck for the field Message"},
+		{"Message", "The value goose failed validator duck for the field Message"},
 		{"Author", "Author cannot be a duck"},
 	}
 
@@ -2320,7 +2320,7 @@ func TestCustomValidateMessage(t *testing.T) {
 	for _, test := range tests {
 		actual := ErrorByField(err, test.param)
 		if actual != test.expected {
-			t.Errorf("Expected ErrorByField(%q) to be %v, got %v", test.param, test.expected, actual)
+			t.Errorf("Expected ErrorByField(%q) to be '%v', got '%v'", test.param, test.expected, actual)
 		}
 	}
 }
