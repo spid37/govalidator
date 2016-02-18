@@ -1508,7 +1508,7 @@ func TestIsDialString(t *testing.T) {
 		{"localhost.localdomain.intern:65535", true},
 		{"127.0.0.1:30000", true},
 		{"[::1]:80", true},
-		{"[1200::AB00:1234::2552:7777:1313]:22",false},
+		{"[1200::AB00:1234::2552:7777:1313]:22", false},
 		{"-localhost:1", false},
 		{"localhost.-localdomain:9090", false},
 		{"localhost.localdomain.-int:65535", false},
@@ -2273,6 +2273,50 @@ func TestValidateStructPointers(t *testing.T) {
 	user := &UserWithPointers{&name, &email, &food, &nerd}
 	_, err := ValidateStruct(user)
 
+	for _, test := range tests {
+		actual := ErrorByField(err, test.param)
+		if actual != test.expected {
+			t.Errorf("Expected ErrorByField(%q) to be %v, got %v", test.param, test.expected, actual)
+		}
+	}
+}
+
+func TestCustomValidateMessage(t *testing.T) {
+	// set custom message
+	CustomValidatorMessageMap["duck"] = CustomValidatorMessage{
+		Message:       "The value {{ .Value }} failed validator {{.Validator}} for the field {{.Name}}",
+		NegateMessage: "{{.Name}} cannot be a {{ .Value }}",
+	}
+	CustomValidatorMessageMap["stringlength"] = CustomValidatorMessage{
+		Message:       "{{.Name}} must be between {{ index .Params 0 }} and {{ index .Params 1 }} characters in length",
+		NegateMessage: "{{.Name}} must be shorter than {{ index .Params 0 }} and longer than {{ index .Params 1 }} characters in length",
+	}
+	type Post struct {
+		Title   string `valid:"stringlength(5|128),required"`
+		Message string `valid:"duck,ascii"`
+		Author  string `valid:"!duck"`
+	}
+	post := &Post{
+		Title:   "Blah",
+		Message: "goose",
+		Author:  "duck",
+	}
+
+	//Add your own struct validation tags
+	TagMap["duck"] = Validator(func(str string) bool {
+		return str == "duck"
+	})
+
+	var tests = []struct {
+		param    string
+		expected string
+	}{
+		{"Title", "Title must be between 5 and 128 characters in length"},
+		{"Message", "the value goose failed validator duck for the field Message"},
+		{"Author", "Author cannot be a duck"},
+	}
+
+	_, err := ValidateStruct(post)
 	for _, test := range tests {
 		actual := ErrorByField(err, test.param)
 		if actual != test.expected {
