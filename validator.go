@@ -2,7 +2,9 @@
 package govalidator
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/url"
@@ -11,6 +13,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"text/template"
 
 	"unicode"
 	"unicode/utf8"
@@ -454,7 +457,7 @@ func IsISO3166Alpha3(str string) bool {
 
 // IsDNSName will validate the given string as a DNS name
 func IsDNSName(str string) bool {
-	if str == "" || len(strings.Replace(str,".","",-1)) > 255 {
+	if str == "" || len(strings.Replace(str, ".", "", -1)) > 255 {
 		// constraints already violated
 		return false
 	}
@@ -724,11 +727,7 @@ func typeCheck(v reflect.Value, t reflect.StructField) (bool, error) {
 							field := fmt.Sprint(v) // make value into string, then validate with regex
 							if result := validatefunc(field, ps[1:]...); !result && !negate || result && negate {
 								var err error
-								if !negate {
-									err = fmt.Errorf("%s does not validate as %s", field, tagOpt)
-								} else {
-									err = fmt.Errorf("%s does validate as %s", field, tagOpt)
-								}
+								err = getErrorMessage(t.Name, key, field, negate, ps[1:]...)
 								return false, Error{t.Name, err}
 							}
 						default:
@@ -746,11 +745,7 @@ func typeCheck(v reflect.Value, t reflect.StructField) (bool, error) {
 					field := fmt.Sprint(v) // make value into string, then validate with regex
 					if result := validatefunc(field); !result && !negate || result && negate {
 						var err error
-						if !negate {
-							err = fmt.Errorf("%s does not validate as %s", field, tagOpt)
-						} else {
-							err = fmt.Errorf("%s does validate as %s", field, tagOpt)
-						}
+						err = getErrorMessage(t.Name, tagOpt, field, negate)
 						return false, Error{t.Name, err}
 					}
 				default:
@@ -853,6 +848,51 @@ func isEmptyValue(v reflect.Value) bool {
 	}
 
 	return reflect.DeepEqual(v.Interface(), reflect.Zero(v.Type()).Interface())
+}
+
+// getErrorMessage get the error message for the specified tag
+func getErrorMessage(name string, tagOpt string, field string, negate bool, params ...string) error {
+	// default errors
+	validateErr := fmt.Errorf("%s does not validate as %s", field, tagOpt)
+	validateNegateErr := fmt.Errorf("%s does validate as %s", field, tagOpt)
+
+	// check for custom errors
+	if val, ok := CustomValidatorMessageMap[tagOpt]; ok {
+		params := map[string]interface{}{
+			"Name":      name,
+			"Validator": tagOpt,
+			"Value":     field,
+			"Params":    params,
+		}
+		// check for custom message
+		if val.Message != "" {
+			tmpl, err := template.New("validate").Parse(val.Message)
+			if err == nil {
+				buffer := new(bytes.Buffer)
+				err = tmpl.Execute(buffer, params)
+				if err == nil {
+					validateErr = errors.New(buffer.String())
+				}
+			}
+		}
+		// check for custom negate message
+		if val.NegateMessage != "" {
+			tmpl, err := template.New("validate").Parse(val.NegateMessage)
+			if err == nil {
+				buffer := new(bytes.Buffer)
+				err = tmpl.Execute(buffer, params)
+				if err == nil {
+					validateNegateErr = errors.New(buffer.String())
+				}
+			}
+		}
+	}
+
+	// if is a negate check return negate error
+	if negate {
+		return validateNegateErr
+	}
+	return validateErr
 }
 
 // ErrorByField returns error for specified field of the struct
