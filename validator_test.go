@@ -2284,12 +2284,12 @@ func TestValidateStructPointers(t *testing.T) {
 func TestCustomValidateMessage(t *testing.T) {
 	// set custom message
 	CustomValidatorMessageMap["duck"] = CustomValidatorMessage{
-		Message:       "The value {{ .Value }} failed validator {{.Validator}} for the field {{.Name}}",
-		NegateMessage: "{{.Name}} cannot be a {{ .Value }}",
+		Message:       "The value {{.Value}} failed validator {{.Validator}} for the field {{.Name}}",
+		NegateMessage: "{{.Name}} cannot be a {{.Value}}",
 	}
 	CustomValidatorMessageMap["stringlength"] = CustomValidatorMessage{
-		Message:       "{{.Name}} must be between {{ index .Params 0 }} and {{ index .Params 1 }} characters in length",
-		NegateMessage: "{{.Name}} must be shorter than {{ index .Params 0 }} and longer than {{ index .Params 1 }} characters in length",
+		Message:       "{{.Name}} must be between {{index .Params 0}} and {{index .Params 1}} characters in length",
+		NegateMessage: "{{.Name}} must be shorter than {{index .Params 0}} and longer than {{index .Params 1}} characters in length",
 	}
 	type Post struct {
 		Title   string `valid:"stringlength(5|128),required"`
