@@ -37,6 +37,15 @@ var ParamTagRegexMap = map[string]*regexp.Regexp{
 	"matches":      regexp.MustCompile(`matches\(([^)]+)\)`),
 }
 
+// CustomValidatorMessage struct to contain a custom message and its negate message
+type CustomValidatorMessage struct {
+	Message       string
+	NegateMessage string
+}
+
+// CustomValidatorMessageMap is a map to contain custom messages for struct validation checks
+var CustomValidatorMessageMap = map[string]CustomValidatorMessage{}
+
 // CustomTypeTagMap is a map of functions that can be used as tags for ValidateStruct function.
 // Use this to validate compound or custom types that need to be handled as a whole, e.g.
 // `type UUID [16]byte` (this would be handled as an array of bytes).
